@@ -1,108 +1,75 @@
 import Zdog from 'zdog'
-import { TunaCan, WaterBottle } from './goods'
-import { Mind1, Mind2 } from './mind'
+import { createTextLayers } from './text'
 
 export function createGeo(svg) {
-  // rendering sizes
-  const zoom = 4;
-  const sceneWidth = 16;
-  const sceneHeight = 16;
-  let viewWidth = sceneWidth * zoom;
-  let viewHeight = sceneHeight * zoom;
-  let svgWidth = Number(svg.getAttribute('width'));
-  let svgHeight = Number(svg.getAttribute('height'));
-  // set viewBox using zoom
-  svg.setAttribute( 'viewBox', `${-viewWidth/2}  ${-viewHeight/2} ` +
-    `${viewWidth} ${viewHeight}` );
-  // rendering variable
-  let isSpinning = true;
-  const TAU = Zdog.TAU;
-  let animationFrame;
+  const zoom = 4
+  const sceneWidth = 24
+  const sceneHeight = 16
+  const viewWidth = sceneWidth * zoom
+  const viewHeight = sceneHeight * zoom
 
-  const scene = new Zdog.Anchor();
-  const tunaCan = TunaCan(scene, -9, 0, 0);
-  const waterBottle = WaterBottle(scene, 9, 0, 0);
-  const mind1 = Mind1(scene, 0, 15, 0);
-  const mind2 = Mind2(scene, 15, 15, 0);
-  const solids = [tunaCan, waterBottle, mind1, mind2];
+  svg.setAttribute(
+    'viewBox',
+    `${-viewWidth / 2} ${-viewHeight / 2} ${viewWidth} ${viewHeight}`,
+  )
 
-  const baseRotations = solids.map((solid) => ({
-    x: solid.rotate.x,
-    y: solid.rotate.y,
-    z: solid.rotate.z,
-  }));
-  const viewRotation = new Zdog.Vector();
-  const keyframes = [
+  const scene = new Zdog.Anchor()
+  const textGroup = createTextLayers(scene)
+
+  const viewRotation = new Zdog.Vector()
+  let elapsed = 0
+  let previousTime = performance.now()
+  const holdDuration = 3000
+  const transitionDuration = 1000
+  const segmentDuration = holdDuration + transitionDuration
+  const faces = [
     { x: 0, y: 0 },
-    { x: 0, y: TAU },
-    { x: TAU, y: TAU },
-  ];
-  const cycleCount = 180;
-  let ticker = 0;
-  const turnLimit = keyframes.length - 1;
-
-  // ----- animate ----- //
+    { x: 0, y: -Zdog.TAU / 4 },
+    { x: -Zdog.TAU / 4, y: 0 },
+  ]
+  let animationFrame
 
   function animate() {
-    update();
-    scene.updateGraph();
-    render();
-    animationFrame = requestAnimationFrame(animate);
+    update()
+    render()
+    animationFrame = requestAnimationFrame(animate)
   }
 
   function update() {
-    if (isSpinning) {
-      const progress = ticker / cycleCount;
-      const tween = Zdog.easeInOut(progress % 1, 4);
-      const turn = Math.floor(progress % turnLimit);
-      const keyA = keyframes[turn];
-      const keyB = keyframes[turn + 1];
+    const now = performance.now()
 
-      viewRotation.x = Zdog.lerp(keyA.x, keyB.x, tween);
-      viewRotation.y = Zdog.lerp(keyA.y, keyB.y, tween);
-      ticker += 1;
+    elapsed += now - previousTime
+    const faceIndex = Math.floor(elapsed / segmentDuration) % faces.length
+    const localTime = elapsed % segmentDuration
+    const nextFaceIndex = (faceIndex + 1) % faces.length
+    const currentFace = faces[faceIndex]
+    const nextFace = faces[nextFaceIndex]
+
+    if (localTime < holdDuration) {
+      viewRotation.x = currentFace.x
+      viewRotation.y = currentFace.y
+    } else {
+      const progress = (localTime - holdDuration) / transitionDuration
+      const easedProgress = Zdog.easeInOut(progress, 4)
+
+      viewRotation.x = Zdog.lerp(currentFace.x, nextFace.x, easedProgress)
+      viewRotation.y = Zdog.lerp(currentFace.y, nextFace.y, easedProgress)
     }
 
-    solids.forEach((solid, index) => {
-      solid.rotate.set({
-        x: baseRotations[index].x + viewRotation.x,
-        y: baseRotations[index].y + viewRotation.y,
-        z: baseRotations[index].z,
-      });
-    });
+    previousTime = now
+    textGroup.rotate.set(viewRotation)
+    textGroup.normalizeRotate()
+    scene.updateGraph()
   }
 
   function render() {
-    empty( svg );
-    scene.renderGraphSvg( svg );
-  }
-
-  animate();
-
-  function empty( element ) {
-    while ( element.firstChild ) {
-      element.removeChild( element.firstChild );
+    while (svg.firstChild) {
+      svg.removeChild(svg.firstChild)
     }
+    scene.renderGraphSvg(svg)
   }
 
-  // ----- drag ----- //
+  animate()
 
-  let dragStartRX, dragStartRY;
-  let minSize = Math.min(svgWidth, svgHeight);
-
-  // add drag-rotatation with Dragger
-  new Zdog.Dragger({
-    startElement: svg,
-    onDragStart: function() {
-      isSpinning = false;
-      dragStartRX = viewRotation.x;
-      dragStartRY = viewRotation.y;
-    },
-    onDragMove: function( pointer, moveX, moveY ) {
-      viewRotation.x = dragStartRX - (moveY / minSize * TAU);
-      viewRotation.y = dragStartRY - (moveX / minSize * TAU);
-    },
-  });
-
-  return () => cancelAnimationFrame(animationFrame);
+  return () => cancelAnimationFrame(animationFrame)
 }

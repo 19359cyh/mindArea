@@ -15,7 +15,7 @@ function App() {
       ref={svgRef}
       width="320"
       height="320"
-      aria-label="Rotating Zdog illustration"
+      aria-label="Rotating text"
     />
   )
 }
