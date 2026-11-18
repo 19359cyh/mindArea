@@ -1,7 +1,175 @@
 .zdog-canvas {
   display: block;
   width: 100%;
-  max-width: 560px;
-  height: 320px;
+  max-width: 50%;
+  height: 300px;
   margin: 0 auto;
+
+}
+
+/*-mind---------------------------------*/
+.mind-glb {
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 160px;
+}
+
+.mind-glb canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#mind {
+  overflow: visible;
+}
+
+.mind-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: default;
+}
+
+.mind-img.has-link {
+  cursor: pointer;
+}
+
+.mind-grid-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  overflow: visible;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 只有單張圖片居中 */
+.mind-grid-container:has(.mind-item:only-child) {
+  max-width: 420px;
+}
+
+/* 只有兩張圖片 */
+.mind-grid-container:has(.mind-item:nth-child(2):last-child) {
+  max-width: 680px;
+}
+
+.mind-grid {
+  padding: 12px;
+  width: 100%;
+}
+
+.mind-item {
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  overflow: hidden;
+  display: block;
+}
+
+.mind-item-inner {
+  width: 100%;
+  height: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.mind-item-inner .ant-image {
+  width: 100% !important;
+  height: auto !important;
+  display: block !important;
+}
+
+
+
+.mind-item-inner img {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: contain !important;
+  display: block !important;
+  transition: transform 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+/* 懸停效果（圖片放大且微微浮起） */
+.mind-item:hover {
+  transform: translateY(-4px);
+}
+
+.mind-item:hover img {
+  transform: scale(1.08);
+}
+
+.mind-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.mind-lightbox-content {
+  position: relative;
+  width: 60%;
+  height: 80%;
+  background: rgba(92, 230, 222, 0.6);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.mind-lightbox-content .mind-glb {
+  width: 100%;
+  height: 100%;
+}
+
+.mind-lightbox-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  color: #fff;
+  font-size: 36px;
+  line-height: 1;
+  cursor: pointer;
+  background: none;
+}
+
+/*-sale-badge---------------------------------*/
+.sale-badge {
+  position: fixed;
+  right: 0px;
+  bottom: 0px;
+  width: 30%;
+  height: auto;
+  pointer-events: none;
+  z-index: 1;
+}
+.seal-title {
+  position: fixed;
+  right: 3%;
+  bottom: 3%;
+  width: 30%;
+  height: auto;
+  pointer-events: none;
+  z-index: 1;
+  font-size: 5.5rem;
+  text-align: right;
+  color: #fff;
+}
+
+/*-手機---------------------------------*/
+@media(max-width: 768px) {
+  .sale-badge {
+    width: 50%;
+  }
+  .seal-title {
+    right: 5%;
+    bottom: 1%;
+    width: 100%;
+    font-size: 2rem;
+  }
 }

@@ -3,7 +3,7 @@ import { createTextLayers } from './text'
 
 export function createGeo(svg) {
   const zoom = 4
-  const sceneWidth = 24
+  const sceneWidth = 40
   const sceneHeight = 16
   const viewWidth = sceneWidth * zoom
   const viewHeight = sceneHeight * zoom
@@ -25,7 +25,7 @@ export function createGeo(svg) {
   const faces = [
     { x: 0, y: 0 },
     { x: 0, y: -Zdog.TAU / 4 },
-    { x: -Zdog.TAU / 4, y: 0 },
+    { x: -Zdog.TAU / 4, y: -Zdog.TAU / 4 },
   ]
   let animationFrame
 

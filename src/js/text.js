@@ -1,6 +1,5 @@
 import Zdog from 'zdog'
 import Zfont from 'zfont'
-
 Zfont.init(Zdog)
 
 const textValue = 'your mindset'
@@ -9,10 +8,13 @@ const textValue_2 = 'N-MART'
 const textColor_2 = '#5CE6DE'
 const textValue_3 = 'get it'
 const textColor_3 = '#FF8000'
-const textDepth = 1.8
+const textDepth = 5
 
 export function createTextLayers(scene) {
-  const font = new Zdog.Font({ src: '/fonts/Roboto.ttf' })
+  // Anta font license: https://fonts.google.com/specimen/Anta/license
+  const font = new Zdog.Font({
+    src: 'https://fonts.gstatic.com/s/anta/v1/gyBzhwQ3KsIyZFw.ttf',
+  })
   const textGroup = new Zdog.Anchor({ addTo: scene })
 
   const textConfigs = [
@@ -29,7 +31,7 @@ export function createTextLayers(scene) {
     {
       value: textValue_3,
       color: textColor_3,
-      rotate: { x: Zdog.TAU / 4, y: 0, z: 0 },
+      rotate: { x: Zdog.TAU / 4, y: 0, z: Zdog.TAU / 4 },
     },
   ]
 
@@ -39,7 +41,7 @@ export function createTextLayers(scene) {
         addTo: textGroup,
         font,
         value: config.value,
-        fontSize: 8,
+        fontSize: 20,
         textAlign: 'center',
         textBaseline: 'middle',
         rotate: config.rotate,
