@@ -4,6 +4,37 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import mindColors from '../json/mindColors.json'
 
+const modelCache = new Map()
+const cachedGeometries = new WeakSet()
+const cachedMaterials = new WeakSet()
+
+function loadCachedModel(source) {
+  if (modelCache.has(source)) return modelCache.get(source)
+
+  const promise = new Promise((resolve, reject) => {
+    new GLTFLoader().load(
+      source,
+      (gltf) => {
+        gltf.scene.traverse((object) => {
+          if (!object.isMesh) return
+          cachedGeometries.add(object.geometry)
+          const materials = Array.isArray(object.material)
+            ? object.material
+            : [object.material]
+          materials.forEach((material) => cachedMaterials.add(material))
+        })
+        resolve(gltf.scene)
+      },
+      undefined,
+      reject,
+    )
+  })
+
+  modelCache.set(source, promise)
+  promise.catch(() => modelCache.delete(source))
+  return promise
+}
+
 export function GlbViewer({
   src,
   fallback,
@@ -13,12 +44,27 @@ export function GlbViewer({
 }) {
   const containerRef = useRef(null)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [isVisible, setIsVisible] = useState(interactive)
   const sources = Array.isArray(src) ? src : [src]
   const sourcesKey = sources.join('|')
 
   useEffect(() => {
+    if (interactive) return
+
     const container = containerRef.current
     if (!container) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { rootMargin: '150px 0px' },
+    )
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [interactive])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || !isVisible) return
     setLoadFailed(false)
     const stableSources = sourcesKey ? sourcesKey.split('|') : []
 
@@ -35,7 +81,7 @@ export function GlbViewer({
       antialias: true,
       alpha: true,
     })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     renderer.outputColorSpace = THREE.SRGBColorSpace
 
     // 色調映射：ACES 讓亮部與暗部更柔和；數值越高畫面越亮
@@ -44,7 +90,7 @@ export function GlbViewer({
 
     // 陰影：開啟並使用柔邊 PCF 陰影
     renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.type = THREE.PCFShadowMap
     renderer.domElement.setAttribute('aria-label', alt)
     container.appendChild(renderer.domElement)
 
@@ -55,7 +101,7 @@ export function GlbViewer({
     const keyLight = new THREE.DirectionalLight(0xffffff, 3.5)
     keyLight.position.set(-4, 7, 4)
     keyLight.castShadow = true
-    keyLight.shadow.mapSize.set(2048, 2048)
+    keyLight.shadow.mapSize.set(1024, 1024)
     keyLight.shadow.camera.near = 0.1
     keyLight.shadow.camera.far = 180
     keyLight.shadow.camera.left = -12
@@ -106,13 +152,9 @@ export function GlbViewer({
       camera.updateProjectionMatrix()
     }
 
-    const loader = new GLTFLoader()
     Promise.all(
-      stableSources.map(
-        (source) =>
-          new Promise((resolve, reject) => {
-            loader.load(source, (gltf) => resolve(gltf.scene), undefined, reject)
-          }),
+      stableSources.map((source) =>
+        loadCachedModel(source).then((scene) => scene.clone(true)),
       ),
     )
       .then((models) => {
@@ -137,10 +179,15 @@ export function GlbViewer({
               const materials = Array.isArray(object.material)
                 ? object.material
                 : [object.material]
-              materials.forEach((material) => {
-                material.color.set(mindColor)
-                material.needsUpdate = true
+              const instanceMaterials = materials.map((material) => {
+                const instanceMaterial = material.clone()
+                instanceMaterial.color.set(mindColor)
+                instanceMaterial.needsUpdate = true
+                return instanceMaterial
               })
+              object.material = Array.isArray(object.material)
+                ? instanceMaterials
+                : instanceMaterials[0]
             }
           })
         })
@@ -288,18 +335,23 @@ export function GlbViewer({
       controls?.dispose()
       resizeObserver.disconnect()
       renderer.dispose()
+      renderer.forceContextLoss()
       renderer.domElement.remove()
       scene.traverse((object) => {
-        if (object.geometry) object.geometry.dispose()
+        if (object.geometry && !cachedGeometries.has(object.geometry)) {
+          object.geometry.dispose()
+        }
         if (object.material) {
           const materials = Array.isArray(object.material)
             ? object.material
             : [object.material]
-          materials.forEach((material) => material.dispose())
+          materials.forEach((material) => {
+            if (!cachedMaterials.has(material)) material.dispose()
+          })
         }
       })
     }
-  }, [sourcesKey, alt, interactive, color])
+  }, [sourcesKey, alt, interactive, color, isVisible])
 
   if (loadFailed && fallback) {
     return fallback

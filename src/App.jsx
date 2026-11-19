@@ -19,7 +19,7 @@ function App() {
     const path = String(item.img).split(/[?#]/)[0]
     const fileName = path.substring(path.lastIndexOf('/') + 1)
     const stem = fileName.replace(/\.[^/.]+$/, '')
-    return stem ? [`/model/${stem}.glb`] : null
+    return stem ? [`${import.meta.env.BASE_URL}model/${stem}.glb`] : null
   }
 
   useEffect(() => {
@@ -144,7 +144,11 @@ function App() {
               alt={`Mind ${selectedMind.id}`}
               interactive
             />
-            <img className="mind-sale-badge" src="/boom.svg" alt="特價" />
+            <img
+              className="mind-sale-badge"
+              src={`${import.meta.env.BASE_URL}boom.svg`}
+              alt="特價"
+            />
             <p className="mind-sale-title">
               {selectedMind.timestamp.replace(' ', '\n')}
             </p>
@@ -152,7 +156,11 @@ function App() {
           </div>
         </div>
       )}
-      <img className="sale-badge" src="/boom.svg" alt="特賣" />
+      <img
+        className="sale-badge"
+        src={`${import.meta.env.BASE_URL}boom.svg`}
+        alt="特賣"
+      />
       <h1 className="sale-title">PURE MIND</h1>
     </>
   )
