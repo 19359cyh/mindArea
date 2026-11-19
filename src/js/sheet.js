@@ -93,7 +93,9 @@ export function parseSchedule(responseText) {
 
     return {
       id: normalizedIds.join('-'),
-      models: normalizedIds.map((id) => `/model/${id}.glb`),
+      models: normalizedIds.map(
+        (id) => `${import.meta.env.BASE_URL}model/${id}.glb`,
+      ),
       timestamp,
       time: timestampInMilliseconds,
     }
