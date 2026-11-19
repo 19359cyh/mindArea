@@ -7,6 +7,7 @@ import mindColors from '../json/mindColors.json'
 const modelCache = new Map()
 const cachedGeometries = new WeakSet()
 const cachedMaterials = new WeakSet()
+const coloredMaterialCache = new WeakMap()
 
 function loadCachedModel(source) {
   if (modelCache.has(source)) return modelCache.get(source)
@@ -17,6 +18,7 @@ function loadCachedModel(source) {
       (gltf) => {
         gltf.scene.traverse((object) => {
           if (!object.isMesh) return
+
           cachedGeometries.add(object.geometry)
           const materials = Array.isArray(object.material)
             ? object.material
@@ -35,12 +37,38 @@ function loadCachedModel(source) {
   return promise
 }
 
+function getColoredMaterial(material, color) {
+  let materialsByColor = coloredMaterialCache.get(material)
+  if (!materialsByColor) {
+    materialsByColor = new Map()
+    coloredMaterialCache.set(material, materialsByColor)
+  }
+
+  if (materialsByColor.has(color)) {
+    return materialsByColor.get(color)
+  }
+
+  const coloredMaterial = material.clone()
+  coloredMaterial.color.set(color)
+  coloredMaterial.needsUpdate = true
+  cachedMaterials.add(coloredMaterial)
+  materialsByColor.set(color, coloredMaterial)
+  return coloredMaterial
+}
+
+//glb 要加一下
+const preloadedModels = ['001', '002', '003', '004']
+preloadedModels.forEach((modelName) => {
+  loadCachedModel(`${import.meta.env.BASE_URL}model/${modelName}.glb`)
+})
+
 export function GlbViewer({
   src,
   fallback,
   alt,
   interactive = false,
   color = null,
+  animated = true,
 }) {
   const containerRef = useRef(null)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -81,7 +109,9 @@ export function GlbViewer({
       antialias: true,
       alpha: true,
     })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, interactive ? 1.5 : 1),
+    )
     renderer.outputColorSpace = THREE.SRGBColorSpace
 
     // 色調映射：ACES 讓亮部與暗部更柔和；數值越高畫面越亮
@@ -89,7 +119,7 @@ export function GlbViewer({
     renderer.toneMappingExposure = 1.08
 
     // 陰影：開啟並使用柔邊 PCF 陰影
-    renderer.shadowMap.enabled = true
+    renderer.shadowMap.enabled = interactive
     renderer.shadowMap.type = THREE.PCFShadowMap
     renderer.domElement.setAttribute('aria-label', alt)
     container.appendChild(renderer.domElement)
@@ -100,8 +130,8 @@ export function GlbViewer({
     // 主光：控制主要亮面與陰影方向
     const keyLight = new THREE.DirectionalLight(0xffffff, 3.5)
     keyLight.position.set(-4, 7, 4)
-    keyLight.castShadow = true
-    keyLight.shadow.mapSize.set(1024, 1024)
+    keyLight.castShadow = interactive
+    keyLight.shadow.mapSize.set(interactive ? 1024 : 256, interactive ? 1024 : 256)
     keyLight.shadow.camera.near = 0.1
     keyLight.shadow.camera.far = 180
     keyLight.shadow.camera.left = -12
@@ -150,6 +180,7 @@ export function GlbViewer({
       renderer.setSize(width, height, false)
       camera.aspect = width / height
       camera.updateProjectionMatrix()
+      if (!animated) renderer.render(scene, camera)
     }
 
     Promise.all(
@@ -163,8 +194,8 @@ export function GlbViewer({
           // GLB 子網格：設定投影與接受陰影
           model.traverse((object) => {
             if (!object.isMesh) return
-            object.castShadow = true
-            object.receiveShadow = true
+            object.castShadow = interactive
+            object.receiveShadow = false
 
             // 依 GLB 檔名名稱（例如 001.glb）查 JSON 顏色表
             const fileName = stableSources[index]
@@ -179,15 +210,12 @@ export function GlbViewer({
               const materials = Array.isArray(object.material)
                 ? object.material
                 : [object.material]
-              const instanceMaterials = materials.map((material) => {
-                const instanceMaterial = material.clone()
-                instanceMaterial.color.set(mindColor)
-                instanceMaterial.needsUpdate = true
-                return instanceMaterial
-              })
+              const coloredMaterials = materials.map((material) =>
+                getColoredMaterial(material, mindColor),
+              )
               object.material = Array.isArray(object.material)
-                ? instanceMaterials
-                : instanceMaterials[0]
+                ? coloredMaterials
+                : coloredMaterials[0]
             }
           })
         })
@@ -313,21 +341,21 @@ export function GlbViewer({
       if (!interactive) {
         if (pairPivot) {
           pairPivot.rotation.y += 0.006
-          pairPivot.rotation.z = 75
+          pairPivot.rotation.z = THREE.MathUtils.degToRad(15)
         } else if (modelGroup) {
           modelGroup.rotation.y += 0.006
-          modelGroup.rotation.z = 75
+          modelGroup.rotation.z = THREE.MathUtils.degToRad(15)
         }
       }
       controls?.update()
-      renderer.render(scene, camera)
+      if (interactive || isVisible) renderer.render(scene, camera)
       animationFrame = requestAnimationFrame(animate)
     }
 
     const resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(container)
     resize()
-    animate()
+    if (animated) animate()
 
     return () => {
       disposed = true
@@ -351,7 +379,7 @@ export function GlbViewer({
         }
       })
     }
-  }, [sourcesKey, alt, interactive, color, isVisible])
+  }, [sourcesKey, alt, interactive, color, isVisible, animated])
 
   if (loadFailed && fallback) {
     return fallback

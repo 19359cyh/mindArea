@@ -110,7 +110,7 @@
 .mind-lightbox {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 12;
   display: grid;
   place-items: center;
   padding: 32px;
@@ -188,29 +188,92 @@
   font-size: 1.5rem;
   font-weight: 500;
 }
-
-/*-sale-badge---------------------------------*/
-.sale-badge {
+/*-archive--------------------------------*/
+.mind-archive {
   position: fixed;
-  right: 0px;
-  bottom: 0px;
-  width: 30%;
-  height: auto;
-  pointer-events: none;
-  z-index: 1;
+  inset: 0;
+  z-index: 11;
+  display: grid;
+  place-items: center;
+  padding: 32px;
 }
-.sale-title {
+
+.mind-archive-content {
+  position: relative;
+  width: 80%;
+  height: 85%;
+  padding: 24px;
+  overflow: auto;
+  border-radius: 22px;
+}
+
+.mind-archive-grid {
+  width: 100%;
+  padding: 0;
+}
+
+.mind-archive-item {
+  position: relative;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  display: block;
+  border: 2px solid rgba(0, 0, 0, 0.8);
+  border-radius: 16px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.mind-archive-item-inner {
+  position: relative;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+}
+
+.mind-archive-item:hover {
+  background: rgba(255, 255, 255);
+  border-color: rgba(255, 209, 54, 0.8);
+  box-shadow: 0 0 16px rgba(255, 209, 54, 0.6);
+  transform: translateY(-4px);
+}
+
+.mind-archive-close {
   position: fixed;
-  right: 3%;
-  bottom: 3%;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
   width: 30%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.mind-archive-close-badge {
+  position: relative;
+  display: block;
+  width: 100%;
   height: auto;
   pointer-events: none;
+}
+
+.mind-archive-close-title {
+  position: absolute;
+  right: 20%;
+  bottom: 10%;
   z-index: 1;
+  width: 80%;
   font-size: 5.5rem;
   font-weight: 900;
   text-align: right;
-  color: #fff;
+  pointer-events: none;
 }
 
 /*-手機---------------------------------*/
@@ -263,14 +326,15 @@
     font-size: 12px;
   }
 
-  /*-sale-badge---------------------------------*/
-  .sale-badge {
+  .mind-archive-close {
+    right: 0;
+    bottom: 0;
     width: 50%;
   }
-  .sale-title {
-    right: 5%;
-    bottom: 1%;
-    width: 100%;
+
+  .mind-archive-close-title {
+    right: 8%;
+    bottom: 18%;
     font-size: 2rem;
   }
 }
