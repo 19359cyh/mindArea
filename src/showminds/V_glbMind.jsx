@@ -35,7 +35,7 @@ export function GlbViewer({
       antialias: true,
       alpha: true,
     })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     renderer.outputColorSpace = THREE.SRGBColorSpace
 
     // 色調映射：ACES 讓亮部與暗部更柔和；數值越高畫面越亮
@@ -55,7 +55,7 @@ export function GlbViewer({
     const keyLight = new THREE.DirectionalLight(0xffffff, 3.5)
     keyLight.position.set(-4, 7, 4)
     keyLight.castShadow = true
-    keyLight.shadow.mapSize.set(2048, 2048)
+    keyLight.shadow.mapSize.set(1024, 1024)
     keyLight.shadow.camera.near = 0.1
     keyLight.shadow.camera.far = 180
     keyLight.shadow.camera.left = -12
