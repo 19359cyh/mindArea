@@ -1,80 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { createGeo } from './js/zdog'
+import { loadSchedule, refreshInterval } from './js/sheet'
 import { Image, Masonry } from 'antd'
 import { GlbViewer } from './showminds/V_glbMind'
 import './App.css'
-
-const sheetEndpoint =
-  'https://docs.google.com/spreadsheets/d/1KkNvrQ6iSb0tmuZZQN0pFvi26NUBf_odpsDTvajLdqA/export?format=csv&gid=0'
-const refreshInterval = 3_000
-
-function toMinutes(value) {
-  const [hours, minutes] = value.split(':').map(Number)
-  if (
-    !Number.isInteger(hours) ||
-    !Number.isInteger(minutes) ||
-    hours < 0 ||
-    hours > 23 ||
-    minutes < 0 ||
-    minutes > 59
-  ) {
-    return null
-  }
-  return hours * 60 + minutes
-}
-
-function parseCsvRow(row) {
-  const cells = []
-  let cell = ''
-  let quoted = false
-
-  for (let index = 0; index < row.length; index += 1) {
-    const character = row[index]
-    const nextCharacter = row[index + 1]
-
-    if (character === '"' && quoted && nextCharacter === '"') {
-      cell += '"'
-      index += 1
-    } else if (character === '"') {
-      quoted = !quoted
-    } else if (character === ',' && !quoted) {
-      cells.push(cell.trim())
-      cell = ''
-    } else {
-      cell += character
-    }
-  }
-
-  cells.push(cell.trim())
-  return cells
-}
-
-function parseSchedule(responseText) {
-  const rows = responseText.trim().split(/\r?\n/).slice(1)
-  return rows.flatMap((row) => {
-    const [time, rawIds = ''] = parseCsvRow(row)
-    const timeInMinutes = toMinutes(time)
-    if (timeInMinutes == null) return []
-
-    const ids = rawIds
-      .replace(/^"+|"+$/g, '')
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean)
-
-    if (ids.length === 0) return []
-
-    const normalizedIds = ids.map((id) =>
-      /^\d+$/.test(id) ? id.padStart(3, '0') : id,
-    )
-
-    return {
-      id: normalizedIds.join('-'),
-      models: normalizedIds.map((id) => `/model/${id}.glb`),
-      time: timeInMinutes,
-    }
-  })
-}
 
 function App() {
   const svgRef = useRef(null)
@@ -102,12 +31,7 @@ function App() {
 
     const loadMindSchedule = async () => {
       try {
-        const response = await fetch(sheetEndpoint)
-        if (!response.ok) {
-          throw new Error(`Google Sheet request failed: ${response.status}`)
-        }
-
-        const nextMind = parseSchedule(await response.text())
+        const nextMind = await loadSchedule()
         if (!active) return
 
         setMind(nextMind)
@@ -124,7 +48,10 @@ function App() {
     }
 
     loadMindSchedule()
-    const intervalId = window.setInterval(loadMindSchedule, refreshInterval)
+    const intervalId = window.setInterval(
+      loadMindSchedule,
+      refreshInterval,
+    )
 
     return () => {
       active = false
@@ -142,10 +69,15 @@ function App() {
         aria-label="Rotating text"
       />
       <section id="mind">
-        <div className="mind-grid-container">
+        <div
+          className={`mind-grid-container mind-grid-count-${mind.length}`}
+        >
           <Masonry
             className="mind-grid"
-            columns={{ xs: 2, md: 4 }}
+            columns={{
+              xs: 2,
+              md: mind.length > 0 && mind.length < 4 ? mind.length : 4,
+            }}
             gutter={[12, 12]}
             items={[...mind]
               .sort((a, b) => b.time - a.time)
@@ -218,6 +150,7 @@ function App() {
             <GlbViewer
               src={resolveModels(selectedMind)}
               alt={`Mind ${selectedMind.id}`}
+              interactive
             />
           </div>
         </div>

@@ -4,7 +4,7 @@ Zfont.init(Zdog)
 
 const textValue = 'your mindset'
 const textColor = '#FFD136'
-const textValue_2 = 'N-MART'
+const textValue_2 = 'n-mart'
 const textColor_2 = '#5CE6DE'
 const textValue_3 = 'get it'
 const textColor_3 = '#FF8000'
