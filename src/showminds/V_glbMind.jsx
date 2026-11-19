@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import modelColors from '../json/modelColors.json'
+import mindColors from '../json/mindColors.json'
 
 export function GlbViewer({
   src,
@@ -49,11 +49,11 @@ export function GlbViewer({
     container.appendChild(renderer.domElement)
 
     // 半球光：上方顏色用於受光面，下方顏色會直接影響橘色陰影/暗部
-    scene.add(new THREE.HemisphereLight(0xFFD136, 0xFF8000, 0.7))
+    scene.add(new THREE.HemisphereLight(0xFFD136, 0xFF8000, 1.7))
 
     // 主光：控制主要亮面與陰影方向
     const keyLight = new THREE.DirectionalLight(0xffffff, 3.5)
-    keyLight.position.set(-4, 7, 6)
+    keyLight.position.set(-4, 7, 4)
     keyLight.castShadow = true
     keyLight.shadow.mapSize.set(2048, 2048)
     keyLight.shadow.camera.near = 0.1
@@ -73,7 +73,7 @@ export function GlbViewer({
     scene.add(rimLight)
 
     // 補光：補亮較暗區域；橘色可以用來控制暗部偏色
-    const fillLight = new THREE.DirectionalLight(0xFF8000, 0.9)
+    const fillLight = new THREE.DirectionalLight(0xFF8000, 1.9)
     fillLight.position.set(8, -5, 8)
     scene.add(fillLight)
 
@@ -130,15 +130,15 @@ export function GlbViewer({
               .filter(Boolean)
               .pop()
             const modelName = fileName?.replace(/\.[^/.]+$/, '')
-            const modelColor = color ?? modelColors[modelName]
+            const mindColor = color ?? mindColors[modelName]
 
             // 未找到名稱或未傳 color 時，保留 GLB 原始材質與貼圖顏色
-            if (modelColor) {
+            if (mindColor) {
               const materials = Array.isArray(object.material)
                 ? object.material
                 : [object.material]
               materials.forEach((material) => {
-                material.color.set(modelColor)
+                material.color.set(mindColor)
                 material.needsUpdate = true
               })
             }
@@ -248,7 +248,7 @@ export function GlbViewer({
         const fitDistance = (boxRadius / Math.sin(fittingFov / 2)) * 1.18
         
         modelGroup.position.sub(center)
-        camera.position.set(0, fitDistance * 0.08, fitDistance)
+        camera.position.set(-fitDistance, fitDistance * 0.08, fitDistance)
         if (controls) {
           controls.minDistance = fitDistance * 0.65
           controls.maxDistance = fitDistance * 3
@@ -266,8 +266,10 @@ export function GlbViewer({
       if (!interactive) {
         if (pairPivot) {
           pairPivot.rotation.y += 0.006
+          pairPivot.rotation.z = 75
         } else if (modelGroup) {
           modelGroup.rotation.y += 0.006
+          modelGroup.rotation.z = 75
         }
       }
       controls?.update()

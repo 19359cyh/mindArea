@@ -104,14 +104,6 @@ function App() {
                       key={resolveModels(data).join('|')}
                       src={resolveModels(data)}
                       alt={`Mind ${data.id}`}
-                      fallback={
-                        <Image
-                          className={`mind-img ${data.link ? 'has-link' : ''}`}
-                          src={resolveAsset(data.img)}
-                          alt={`Mind ${data.id}`}
-                          preview={false}
-                        />
-                      }
                     />
                   ) : (
                     <Image
@@ -152,11 +144,16 @@ function App() {
               alt={`Mind ${selectedMind.id}`}
               interactive
             />
+            <img className="mind-sale-badge" src="/boom.svg" alt="特價" />
+            <p className="mind-sale-title">
+              {selectedMind.timestamp.replace(' ', '\n')}
+            </p>
+            <p className="mind-sale-p">連想型號：{selectedMind.id}</p>
           </div>
         </div>
       )}
       <img className="sale-badge" src="/boom.svg" alt="特賣" />
-      <h1 className="seal-title">PURE MIND</h1>
+      <h1 className="sale-title">PURE MIND</h1>
     </>
   )
 }
