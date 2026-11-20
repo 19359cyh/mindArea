@@ -1,5 +1,35 @@
+import { useEffect, useRef, useState } from 'react'
 import { Image, Masonry } from 'antd'
 import { GlbViewer } from './V_glbMind'
+
+function ArchiveGlbViewer({ src, alt }) {
+  const viewerRef = useRef(null)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const element = viewerRef.current
+    if (!element) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold: 0.01 },
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={viewerRef} className="mind-glb">
+      {isVisible && (
+        <GlbViewer
+          src={src}
+          alt={alt}
+          animated={false}
+        />
+      )}
+    </div>
+  )
+}
 
 export function ArchivePage({ minds, resolveModels, resolveAsset, onSelect, onClose }) {
   return (
@@ -47,11 +77,9 @@ export function ArchivePage({ minds, resolveModels, resolveAsset, onSelect, onCl
             >
               <div className="mind-archive-item-inner">
                 {resolveModels(data) ? (
-                  <GlbViewer
-                    key={resolveModels(data).join('|')}
+                  <ArchiveGlbViewer
                     src={resolveModels(data)}
                     alt={`Mind ${data.id}`}
-                    animated={false}
                   />
                 ) : (
                   <Image

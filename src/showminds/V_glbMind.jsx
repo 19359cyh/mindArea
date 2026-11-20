@@ -56,8 +56,8 @@ function getColoredMaterial(material, color) {
   return coloredMaterial
 }
 
-//glb 要加一下
-const preloadedModels = ['001', '002', '003', '004']
+//glb 要加json一下
+const preloadedModels = Object.keys(mindColors)
 preloadedModels.forEach((modelName) => {
   loadCachedModel(`${import.meta.env.BASE_URL}model/${modelName}.glb`)
 })
