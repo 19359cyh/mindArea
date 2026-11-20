@@ -8,6 +8,37 @@ const modelCache = new Map()
 const cachedGeometries = new WeakSet()
 const cachedMaterials = new WeakSet()
 const coloredMaterialCache = new WeakMap()
+const contextWaiters = new Set()
+const maxActiveContexts = 8
+let activeContextCount = 0
+
+function acquireContextSlot(onAvailable) {
+  let released = false
+
+  if (activeContextCount < maxActiveContexts) {
+    activeContextCount += 1
+    onAvailable()
+  } else {
+    contextWaiters.add(onAvailable)
+  }
+
+  return {
+    release() {
+      if (released) return
+      released = true
+
+      if (contextWaiters.delete(onAvailable)) return
+
+      activeContextCount = Math.max(0, activeContextCount - 1)
+      const nextWaiter = contextWaiters.values().next().value
+      if (nextWaiter) {
+        contextWaiters.delete(nextWaiter)
+        activeContextCount += 1
+        nextWaiter()
+      }
+    },
+  }
+}
 
 function loadCachedModel(source) {
   if (modelCache.has(source)) return modelCache.get(source)
@@ -73,6 +104,7 @@ export function GlbViewer({
   const containerRef = useRef(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [isVisible, setIsVisible] = useState(interactive)
+  const [contextSlotReady, setContextSlotReady] = useState(false)
   const sources = Array.isArray(src) ? src : [src]
   const sourcesKey = sources.join('|')
 
@@ -83,7 +115,10 @@ export function GlbViewer({
     if (!container) return
 
     const observer = new IntersectionObserver(
-      ([entry]) => setIsVisible(entry.isIntersecting),
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting)
+        setContextSlotReady(false)
+      },
       { rootMargin: '150px 0px' },
     )
     observer.observe(container)
@@ -91,8 +126,22 @@ export function GlbViewer({
   }, [interactive])
 
   useEffect(() => {
+    if (!isVisible) return
+
+    let cancelled = false
+    const slot = acquireContextSlot(() => {
+      if (!cancelled) setContextSlotReady(true)
+    })
+
+    return () => {
+      cancelled = true
+      slot.release()
+    }
+  }, [isVisible])
+
+  useEffect(() => {
     const container = containerRef.current
-    if (!container || !isVisible) return
+    if (!container || !isVisible || !contextSlotReady) return
     setLoadFailed(false)
     const stableSources = sourcesKey ? sourcesKey.split('|') : []
 
@@ -379,7 +428,15 @@ export function GlbViewer({
         }
       })
     }
-  }, [sourcesKey, alt, interactive, color, isVisible, animated])
+  }, [
+    sourcesKey,
+    alt,
+    interactive,
+    color,
+    isVisible,
+    contextSlotReady,
+    animated,
+  ])
 
   if (loadFailed && fallback) {
     return fallback
