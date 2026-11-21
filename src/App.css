@@ -4,9 +4,16 @@
   max-width: 50%;
   height: 300px;
   margin: 0 auto;
+  margin-top: -3%;
 }
 
 /*-mind---------------------------------*/
+.mind{
+  width: 100%;
+  height: 100%;
+  margin-top: -3%;
+}
+/* 其他圖 */
 .mind-glb {
   width: 100%;
   aspect-ratio: 1;
@@ -64,9 +71,65 @@
   overflow: visible;
   padding: 10px;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
 }
+/*第一個大圖*/
+.mind-main-feature {
+  width: 50%;
+  margin: 0 auto 16px;
+}
 
+.mind-main-feature-item {
+  position: relative;
+  width: 100%;
+  height: 250px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  display: block;
+  border-radius: 22px;
+}
+
+.mind-main-feature-content {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.mind-main-feature-content,
+.mind-main-feature-content .mind-glb {
+  width: 100%;
+  height: 100%;
+}
+
+.mind-main-feature-content .mind-glb canvas,
+.mind-main-feature-content img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-image: url('/boom2.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.mind-main-feature-item:hover {
+  border-radius: 22px;
+  border-color: rgb(255, 209, 54);
+}
+
+.mind-main-feature-item:hover .mind-glb canvas {
+  transform: scale(1.06);
+}
+
+
+.mind-main-masonry {
+  margin: 0 auto;
+}
+
+/* 其他圖 */
 /* 少於四張時，桌面版讓最後一列置中 */
 .mind-grid-container.mind-grid-count-1 {
   max-width: 420px;
@@ -311,7 +374,26 @@
   .mind-grid {
     width: 90%;
   }
+  /*第一個大圖 */
+  .mind-main-feature {
+    width: 90%;
+    max-width: none;
+  }
 
+  .mind-main-masonry {
+    width: 90%;
+  }
+
+  .mind-main-feature-item:hover {
+    transform: none;
+    background: transparent;
+  }
+
+  .mind-main-feature-item:hover .mind-glb canvas {
+    transform: none;
+  }
+
+  /* 其他圖 */
   .mind-lightbox-content {
     width: 95%;
     height: 50%;

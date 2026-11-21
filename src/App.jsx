@@ -4,6 +4,7 @@ import { loadSchedule, refreshInterval } from './js/sheet'
 import { Image, Masonry } from 'antd'
 import { GlbViewer } from './showminds/V_glbMind'
 import { ArchivePage } from './showminds/ArchivePage'
+import 'animate.css';
 import './App.css'
 
 function App() {
@@ -13,9 +14,34 @@ function App() {
     () => window.location.hash === '#archive',
   )
   const [mind, setMind] = useState([])
+  const [latestMindAnimation, setLatestMindAnimation] = useState(null)
+  const previousLatestMindId = useRef(null)
   const sortedMinds = [...mind].sort((a, b) => b.time - a.time)
-  const mainMinds = sortedMinds.slice(0, 12)
-  const archivedMinds = sortedMinds.slice(12)
+  const mainMinds = sortedMinds.slice(0, 13) //首頁顯示
+  const archivedMinds = sortedMinds.slice(13) //超過數量圖鑑顯示
+  const remainingMainMinds = mainMinds.slice(1)
+  const latestMindId = mainMinds[0]?.id
+
+  useEffect(() => {
+    if (!latestMindId) return
+
+    if (
+      previousLatestMindId.current &&
+      previousLatestMindId.current !== latestMindId
+    ) {
+      setLatestMindAnimation('lightSpeedInLeft')
+    }
+    previousLatestMindId.current = latestMindId
+  }, [latestMindId])
+
+  // 第一個大圖動畫
+  const nextLatestAnimation = () => {
+    if (latestMindAnimation === 'lightSpeedInLeft') {
+      setLatestMindAnimation('rubberBand')
+    } else if (latestMindAnimation === 'rubberBand') {
+      setLatestMindAnimation(null)
+    }
+  }
 
   const resolveAsset = (asset) => asset
   const resolveModels = (item) => {
@@ -97,18 +123,54 @@ function App() {
             height="320"
             aria-label="Rotating text"
           />
-          <section id="mind">
+          <section id="mind" className="mind">
             <div
               className={`mind-grid-container mind-grid-count-${mainMinds.length}`}
             >
+              {/* 第一個大圖 */}
+              {mainMinds[0] && (
+                <div className="mind-main-feature">
+                  <div
+                    className={`mind-main-feature-item ${latestMindAnimation ? `animate__animated animate__${latestMindAnimation}` : ''}`}
+                    onAnimationEnd={nextLatestAnimation}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedMind(mainMinds[0])}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setSelectedMind(mainMinds[0])
+                      }
+                    }}
+                  >
+                    <div className="mind-main-feature-content">
+                      {resolveModels(mainMinds[0]) ? (
+                        <GlbViewer
+                          key={resolveModels(mainMinds[0]).join('|')}
+                          src={resolveModels(mainMinds[0])}
+                          alt={`Mind ${mainMinds[0].id}`}
+                        />
+                      ) : (
+                        <Image
+                          className={`mind-img ${mainMinds[0].link ? 'has-link' : ''}`}
+                          src={resolveAsset(mainMinds[0].img)}
+                          alt={`Mind ${mainMinds[0].id}`}
+                          preview={false}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* 其他圖 */}
               <Masonry
-                className="mind-grid"
+                className="mind-grid mind-main-masonry"
                 columns={{
                   xs: 2,
-                  md: mainMinds.length > 0 && mainMinds.length < 4 ? mainMinds.length : 4,
+                  md: remainingMainMinds.length > 0 && remainingMainMinds.length < 4 ? remainingMainMinds.length : 4,
                 }}
                 gutter={[12, 12]}
-                items={mainMinds.map((item, index) => ({
+                items={remainingMainMinds.map((item, index) => ({
                   key: `${item.id}-${index}`,
                   data: item,
                 }))}
