@@ -20,6 +20,29 @@
   touch-action: none;
 }
 
+.mind-glb-snapshot {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.mind-glb-snapshot-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.mind-archive-snapshot-generator {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 320px;
+  height: 320px;
+  pointer-events: none;
+  visibility: hidden;
+}
+
 #mind {
   overflow: visible;
 }

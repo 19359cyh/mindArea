@@ -8,6 +8,12 @@ const modelCache = new Map()
 const cachedGeometries = new WeakSet()
 const cachedMaterials = new WeakSet()
 const coloredMaterialCache = new WeakMap()
+const snapshotCache = new Map()
+
+export function getGlbSnapshot(src, color = null) {
+  const sourcesKey = (Array.isArray(src) ? src : [src]).join('|')
+  return snapshotCache.get(`${sourcesKey}|${color ?? ''}`) ?? null
+}
 
 function loadCachedModel(source) {
   if (modelCache.has(source)) return modelCache.get(source)
@@ -69,31 +75,40 @@ export function GlbViewer({
   interactive = false,
   color = null,
   animated = true,
+  snapshot = false,
+  onSnapshot = null,
 }) {
   const containerRef = useRef(null)
   const [loadFailed, setLoadFailed] = useState(false)
-  const [isVisible, setIsVisible] = useState(interactive)
   const sources = Array.isArray(src) ? src : [src]
   const sourcesKey = sources.join('|')
+  const snapshotKey = `${sourcesKey}|${color ?? ''}`
+  const [isVisible, setIsVisible] = useState(interactive || snapshot)
+  const [snapshotUrl, setSnapshotUrl] = useState(() =>
+    snapshot ? snapshotCache.get(snapshotKey) ?? null : null,
+  )
 
   useEffect(() => {
-    if (interactive) return
+    if (interactive || snapshot) return
 
     const container = containerRef.current
     if (!container) return
 
     const observer = new IntersectionObserver(
       ([entry]) => setIsVisible(entry.isIntersecting),
-      { rootMargin: '150px 0px' },
+      { rootMargin: snapshot ? '0px' : '150px 0px' },
     )
     observer.observe(container)
     return () => observer.disconnect()
-  }, [interactive])
+  }, [interactive, snapshot])
 
   useEffect(() => {
     const container = containerRef.current
     if (!container || !isVisible) return
-    setLoadFailed(false)
+    if (snapshot && snapshotUrl) {
+      onSnapshot?.(snapshotUrl)
+      return
+    }
     const stableSources = sourcesKey ? sourcesKey.split('|') : []
 
     // 場景：包含所有 GLB 模型與光源
@@ -108,6 +123,7 @@ export function GlbViewer({
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
+      preserveDrawingBuffer: snapshot,
     })
     renderer.setPixelRatio(
       Math.min(window.devicePixelRatio, interactive ? 1.5 : 1),
@@ -116,7 +132,7 @@ export function GlbViewer({
 
     // 色調映射：ACES 讓亮部與暗部更柔和；數值越高畫面越亮
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.08
+    renderer.toneMappingExposure = 0.78
 
     // 陰影：開啟並使用柔邊 PCF 陰影
     renderer.shadowMap.enabled = interactive
@@ -124,23 +140,17 @@ export function GlbViewer({
     renderer.domElement.setAttribute('aria-label', alt)
     container.appendChild(renderer.domElement)
 
-    // 半球光：上方顏色用於受光面，下方顏色會直接影響橘色陰影/暗部
-    scene.add(new THREE.HemisphereLight(0xFFD136, 0xFF8000, 1.7))
-
     // 主光：控制主要亮面與陰影方向
     const keyLight = new THREE.DirectionalLight(0xffffff, 3.5)
     keyLight.position.set(-4, 7, 4)
     keyLight.castShadow = interactive
     keyLight.shadow.mapSize.set(interactive ? 1024 : 256, interactive ? 1024 : 256)
     keyLight.shadow.camera.near = 0.1
-    keyLight.shadow.camera.far = 180
-    keyLight.shadow.camera.left = -12
-    keyLight.shadow.camera.right = 12
-    keyLight.shadow.camera.top = 12
-    keyLight.shadow.camera.bottom = -12
-    keyLight.shadow.bias = -0.00015
-    keyLight.shadow.normalBias = 0.035
-    keyLight.shadow.radius = 3
+    keyLight.shadow.camera.far = 100
+    keyLight.shadow.camera.left = -20
+    keyLight.shadow.camera.right = 20
+    keyLight.shadow.camera.top = 20
+    keyLight.shadow.camera.bottom = -20
     scene.add(keyLight)
 
     // 輪廓光：補強模型背面邊緣，讓外型更有立體感
@@ -332,6 +342,30 @@ export function GlbViewer({
         }
         camera.lookAt(0, 0, 0)
         resize()
+        if (snapshot) {
+          const cachedSnapshot = snapshotCache.get(snapshotKey)
+
+          if (cachedSnapshot) {
+            setSnapshotUrl(cachedSnapshot)
+          } else {
+            renderer.render(scene, camera)
+            try {
+              const url = renderer.domElement.toDataURL('image/png')
+              snapshotCache.set(snapshotKey, url)
+              setSnapshotUrl(url)
+              onSnapshot?.(url)
+            } catch {
+              setLoadFailed(true)
+            } finally {
+              renderer.dispose()
+              const loseContext = renderer
+                .getContext()
+                .getExtension('WEBGL_lose_context')
+              loseContext?.loseContext()
+              renderer.domElement.remove()
+            }
+          }
+        }
       })
       .catch(() => {
         if (!disposed) setLoadFailed(true)
@@ -355,7 +389,7 @@ export function GlbViewer({
     const resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(container)
     resize()
-    if (animated) animate()
+    if (animated && !snapshot) animate()
 
     return () => {
       disposed = true
@@ -363,7 +397,12 @@ export function GlbViewer({
       controls?.dispose()
       resizeObserver.disconnect()
       renderer.dispose()
-      renderer.forceContextLoss()
+      if (!snapshot) {
+        const loseContext = renderer
+          .getContext()
+          .getExtension('WEBGL_lose_context')
+        loseContext?.loseContext()
+      }
       renderer.domElement.remove()
       scene.traverse((object) => {
         if (object.geometry && !cachedGeometries.has(object.geometry)) {
@@ -379,10 +418,31 @@ export function GlbViewer({
         }
       })
     }
-  }, [sourcesKey, alt, interactive, color, isVisible, animated])
+  }, [
+    sourcesKey,
+    alt,
+    interactive,
+    color,
+    isVisible,
+    animated,
+    snapshot,
+    snapshotUrl,
+    snapshotKey,
+    onSnapshot,
+  ])
 
   if (loadFailed && fallback) {
     return fallback
+  }
+
+  if (snapshot && snapshotUrl) {
+    return (
+      <img
+        className="mind-glb-snapshot"
+        src={snapshotUrl}
+        alt={alt}
+      />
+    )
   }
 
   return (

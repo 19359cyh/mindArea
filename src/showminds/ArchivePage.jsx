@@ -1,37 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Image, Masonry } from 'antd'
-import { GlbViewer } from './V_glbMind'
-
-function ArchiveGlbViewer({ src, alt }) {
-  const viewerRef = useRef(null)
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const element = viewerRef.current
-    if (!element) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsVisible(entry.isIntersecting),
-      { threshold: 0.01 },
-    )
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [])
-
-  return (
-    <div ref={viewerRef} className="mind-glb">
-      {isVisible && (
-        <GlbViewer
-          src={src}
-          alt={alt}
-          animated={false}
-        />
-      )}
-    </div>
-  )
-}
+import { getGlbSnapshot, GlbViewer } from './V_glbMind'
 
 export function ArchivePage({ minds, resolveModels, resolveAsset, onSelect, onClose }) {
+  const snapshotSources = useMemo(
+    () => {
+      const uniqueSources = new Map()
+      minds
+        .map((item) => resolveModels(item))
+        .filter((sources) => sources?.length)
+        .forEach((sources) => {
+          const key = sources.join('|')
+          uniqueSources.set(key, sources)
+        })
+      return [...uniqueSources.values()]
+    },
+    [minds, resolveModels],
+  )
+  const [snapshotIndex, setSnapshotIndex] = useState(0)
+  const snapshotSource = snapshotSources[snapshotIndex]
+
   return (
     <div
       className="mind-archive"
@@ -57,6 +45,23 @@ export function ArchivePage({ minds, resolveModels, resolveAsset, onSelect, onCl
           />
           <span className="mind-archive-close-title">BACK MART</span>
         </button>
+          {snapshotSource && (
+            <div
+              className="mind-archive-snapshot-generator"
+              aria-hidden="true"
+            >
+              <GlbViewer
+                key={snapshotSource.join('|')}
+                src={snapshotSource}
+                alt=""
+                animated={false}
+                snapshot
+                onSnapshot={() =>
+                  setSnapshotIndex((index) => index + 1)
+                }
+              />
+            </div>
+          )}
         <Masonry
           className="mind-archive-grid"
           columns={{
@@ -77,10 +82,15 @@ export function ArchivePage({ minds, resolveModels, resolveAsset, onSelect, onCl
             >
               <div className="mind-archive-item-inner">
                 {resolveModels(data) ? (
-                  <ArchiveGlbViewer
-                    src={resolveModels(data)}
-                    alt={`Mind ${data.id}`}
-                  />
+                    getGlbSnapshot(resolveModels(data)) ? (
+                      <img
+                        className="mind-glb-snapshot"
+                        src={getGlbSnapshot(resolveModels(data))}
+                        alt={`Mind ${data.id}`}
+                      />
+                    ) : (
+                      <div className="mind-glb-snapshot-placeholder" aria-label={`Mind ${data.id}`} />
+                    )
                 ) : (
                   <Image
                     className={`mind-img ${data.link ? 'has-link' : ''}`}
