@@ -1,72 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import mindColors from '../json/mindColors.json'
+import {
+  getColoredMaterial,
+  getGlbSnapshot,
+  isCachedGeometry,
+  isCachedMaterial,
+  loadCachedModel,
+  setGlbSnapshot,
+} from '../js/glbModel'
 
-const modelCache = new Map()
-const cachedGeometries = new WeakSet()
-const cachedMaterials = new WeakSet()
-const coloredMaterialCache = new WeakMap()
-const snapshotCache = new Map()
-
-export function getGlbSnapshot(src, color = null) {
-  const sourcesKey = (Array.isArray(src) ? src : [src]).join('|')
-  return snapshotCache.get(`${sourcesKey}|${color ?? ''}`) ?? null
-}
-
-function loadCachedModel(source) {
-  if (modelCache.has(source)) return modelCache.get(source)
-
-  const promise = new Promise((resolve, reject) => {
-    new GLTFLoader().load(
-      source,
-      (gltf) => {
-        gltf.scene.traverse((object) => {
-          if (!object.isMesh) return
-
-          cachedGeometries.add(object.geometry)
-          const materials = Array.isArray(object.material)
-            ? object.material
-            : [object.material]
-          materials.forEach((material) => cachedMaterials.add(material))
-        })
-        resolve(gltf.scene)
-      },
-      undefined,
-      reject,
-    )
-  })
-
-  modelCache.set(source, promise)
-  promise.catch(() => modelCache.delete(source))
-  return promise
-}
-
-function getColoredMaterial(material, color) {
-  let materialsByColor = coloredMaterialCache.get(material)
-  if (!materialsByColor) {
-    materialsByColor = new Map()
-    coloredMaterialCache.set(material, materialsByColor)
-  }
-
-  if (materialsByColor.has(color)) {
-    return materialsByColor.get(color)
-  }
-
-  const coloredMaterial = material.clone()
-  coloredMaterial.color.set(color)
-  coloredMaterial.needsUpdate = true
-  cachedMaterials.add(coloredMaterial)
-  materialsByColor.set(color, coloredMaterial)
-  return coloredMaterial
-}
-
-//glb 要加json一下
-const preloadedModels = Object.keys(mindColors)
-preloadedModels.forEach((modelName) => {
-  loadCachedModel(`${import.meta.env.BASE_URL}model/${modelName}.glb`)
-})
+export { getGlbSnapshot } from '../js/glbModel'
 
 export function GlbViewer({
   src,
@@ -82,10 +27,9 @@ export function GlbViewer({
   const [loadFailed, setLoadFailed] = useState(false)
   const sources = Array.isArray(src) ? src : [src]
   const sourcesKey = sources.join('|')
-  const snapshotKey = `${sourcesKey}|${color ?? ''}`
   const [isVisible, setIsVisible] = useState(interactive || snapshot)
   const [snapshotUrl, setSnapshotUrl] = useState(() =>
-    snapshot ? snapshotCache.get(snapshotKey) ?? null : null,
+    snapshot ? getGlbSnapshot(sources, color) : null,
   )
 
   useEffect(() => {
@@ -343,7 +287,7 @@ export function GlbViewer({
         camera.lookAt(0, 0, 0)
         resize()
         if (snapshot) {
-          const cachedSnapshot = snapshotCache.get(snapshotKey)
+          const cachedSnapshot = getGlbSnapshot(sources, color)
 
           if (cachedSnapshot) {
             setSnapshotUrl(cachedSnapshot)
@@ -351,7 +295,7 @@ export function GlbViewer({
             renderer.render(scene, camera)
             try {
               const url = renderer.domElement.toDataURL('image/png')
-              snapshotCache.set(snapshotKey, url)
+              setGlbSnapshot(sources, url, color)
               setSnapshotUrl(url)
               onSnapshot?.(url)
             } catch {
@@ -405,7 +349,7 @@ export function GlbViewer({
       }
       renderer.domElement.remove()
       scene.traverse((object) => {
-        if (object.geometry && !cachedGeometries.has(object.geometry)) {
+        if (object.geometry && !isCachedGeometry(object.geometry)) {
           object.geometry.dispose()
         }
         if (object.material) {
@@ -413,7 +357,7 @@ export function GlbViewer({
             ? object.material
             : [object.material]
           materials.forEach((material) => {
-            if (!cachedMaterials.has(material)) material.dispose()
+            if (!isCachedMaterial(material)) material.dispose()
           })
         }
       })
@@ -427,7 +371,6 @@ export function GlbViewer({
     animated,
     snapshot,
     snapshotUrl,
-    snapshotKey,
     onSnapshot,
   ])
 
